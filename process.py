@@ -71,6 +71,31 @@ def _get_column_ord(col, colord=1):
     return _get_column_ord(col[1:], 26 * (firstord + 1) + 1)
 
 
+def _get_column_from_ord(ordinal):
+    """
+    >>> samples = ['A', 'Z', 'AA', 'AB', 'AZ', 'BA', 'BZ', 'CA']
+    >>> [_get_column_from_ord(_get_column_ord(s)) for s in samples] == samples
+    True
+    """
+    if ordinal <= 26:
+        return chr(ordinal + 64)
+    return _get_column_from_ord((ordinal - 1) // 26) + _get_column_from_ord((ordinal - 1) % 26 + 1)
+
+
+def _incr_column(column):
+    """
+    >>> _incr_column('A')
+    'B'
+    >>> _incr_column('Z')
+    'AA'
+    >>> _incr_column('AA')
+    'AB'
+    >>> _incr_column('AZ')
+    'BA'
+    """
+    return _get_column_from_ord(_get_column_ord(column) + 1)
+
+
 def _getCell(sheet, rowel, col):
     colord = _get_column_ord(col)
     coln = 0
@@ -108,6 +133,7 @@ class Process(object):
             if sheet.getAttribute('name') == company:
                 translations = _TRANSLATION[statement]
                 new_data = json.load(open(self.args.ifile))
+                column = self.args.column
                 for fundamental in new_data['fundamentals'][::-1]:
                     if period_type == 'annual' and not fundamental['filing_type'].startswith('10-K'):
                         continue
@@ -117,29 +143,31 @@ class Process(object):
                             if value:
                                 row = translations[tag['tag']]
                                 rowel = sheet.getElementsByType(TableRow)[row - 1]
-                                cell = _getCell(sheet, rowel, self.args.column)
+                                cell = _getCell(sheet, rowel, column)
                                 cell.setAttribute("value", value)
-                                self.__filled_cells[f'{self.args.column}{row}'] = value
+                                self.__filled_cells[f'{column}{row}'] = value
                                 cell.setAttribute("valuetype", 'float')
                                 if cell.getAttribute("formula"):
                                     cell.removeAttribute("formula")
                                 if cell.firstChild is not None:
                                     cell.removeChild(cell.firstChild)
                                 cell.addElement(P(text=value))
-                                print(f"Updated cell {self.args.column}{row} with value {value}")
+                                print(f"Updated cell {column}{row} with value {value}")
 
-                for idx, rowel in enumerate(sheet.getElementsByType(TableRow)):
-                    try:
-                        cell = _getCell(sheet, rowel, self.args.column)
-                    except ValueError:
-                        print(f"Cell {self.args.column}{idx+1} of sheet {sheet.getAttribute('name')} is not initialized.")
-                    else:
-                        formula = cell.getAttribute('formula')
-                        if formula is not None:
-                            value = evaluate(formula, self.__filled_cells)
-                            cell.setAttribute('value', value)
-                            if cell.firstChild is not None:
-                                cell.removeChild(cell.firstChild)
+                    for idx, rowel in enumerate(sheet.getElementsByType(TableRow)):
+                        try:
+                            cell = _getCell(sheet, rowel, column)
+                        except ValueError:
+                            print(f"Cell {column}{idx+1} of sheet {sheet.getAttribute('name')} is not initialized.")
+                        else:
+                            formula = cell.getAttribute('formula')
+                            if formula is not None:
+                                value = evaluate(formula, self.__filled_cells)
+                                cell.setAttribute('value', value)
+                                if cell.firstChild is not None:
+                                    cell.removeChild(cell.firstChild)
+
+                    column = _incr_column(column)
 
                 doc.save(self.args.spreadsheet)
                 break
