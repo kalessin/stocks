@@ -42,17 +42,33 @@ _DIVISORS.update({
 })
 
 
-def _get_column_ord(col):
+def _get_column_ord(col, colord=1):
     """
-    >>> Process.get_column_ord('A')
+    >>> _get_column_ord('A')
     1
-    >>> Process.get_column_ord('Z')
+    >>> _get_column_ord('K')
+    11
+    >>> _get_column_ord('Z')
     26
+    >>> _get_column_ord('AA')
+    27
+    >>> _get_column_ord('AB')
+    28
+    >>> _get_column_ord('AZ')
+    52
+    >>> _get_column_ord('BA')
+    53
+    >>> _get_column_ord('BZ')
+    78
+    >>> _get_column_ord('CA')
+    79
     """
-    colord = 0
-    for mul, char in enumerate(col[::-1]):
-        colord += (ord(char) - ord('A') + 1) * 27 ** mul
-    return colord
+    if len(col) == 0:
+        return colord
+    firstord = ord(col[0]) - ord('A')
+    if len(col) == 1:
+        return colord + firstord
+    return _get_column_ord(col[1:], 26 * (firstord + 1) + 1)
 
 
 def _getCell(sheet, rowel, col):
