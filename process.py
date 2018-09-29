@@ -10,7 +10,7 @@ from odf.text import P
 
 from stocks.formula import evaluate
 
-_FILE_RE = re.compile(r"(\w+)-(\w+)(?:-(\w+))?")
+_FILE_RE = re.compile(r"(\w+)-(\w+)-(\w+)")
 
 _TRANSLATION = {
     'income_statement': {

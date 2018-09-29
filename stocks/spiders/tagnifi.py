@@ -19,6 +19,7 @@ class TagnifiSpider(Spider):
     limit = 1
     period_type = None
 
+    # be friendly!
     custom_settings = {
         "CONCURRENT_REQUEST": 1,
         "DOWNLOAD_DELAY": 20,
