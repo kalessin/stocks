@@ -10,7 +10,7 @@ from odf.text import P
 
 from stocks.formula import evaluate
 
-_FILE_RE = re.compile(r"(\w+)-(\w+)")
+_FILE_RE = re.compile(r"(\w+)-(\w+)(?:-(\w+))?")
 
 _TRANSLATION = {
     'income_statement': {
@@ -87,12 +87,14 @@ class Process(object):
 
     def run(self):
         doc = load(self.args.spreadsheet)
-        company, statement = _FILE_RE.match(self.args.ifile).groups()
+        company, statement, period_type = _FILE_RE.match(self.args.ifile).groups()
         for sheet in doc.spreadsheet.childNodes:
             if sheet.getAttribute('name') == company:
                 translations = _TRANSLATION[statement]
                 new_data = json.load(open(self.args.ifile))
-                for fundamental in new_data['fundamentals']:
+                for fundamental in new_data['fundamentals'][::-1]:
+                    if period_type == 'annual' and not fundamental['filing_type'].startswith('10-K'):
+                        continue
                     for tag in fundamental['tags']:
                         if tag['tag'] in translations:
                             value = tag['value'] / _DIVISORS[tag['tag']]
@@ -125,6 +127,8 @@ class Process(object):
 
                 doc.save(self.args.spreadsheet)
                 break
+        else:
+            print(f"No sheet with name {company}")
 
 
 if __name__ == '__main__':
