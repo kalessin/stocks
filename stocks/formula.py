@@ -35,6 +35,15 @@ def evaluate(formula_string, celldict):
     try:
         return eval(formula_string)
     except ZeroDivisionError:
+        print(f"Error evaluating {formula_string}")
         return "#DIV/0!"
+    except TypeError as e:
+        print(f"Error evaluating {formula_string}")
+        if "#DIV/0!" in formula_string:
+            return "#DIV/0!"
+        raise
+    except:
+        print(f"Error evaluating {formula_string}")
+        raise
 
     raise ValueError(f"Formula '{formula_string}' could not be evaluated")
