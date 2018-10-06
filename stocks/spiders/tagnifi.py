@@ -15,7 +15,7 @@ class TagnifiSpider(Spider):
                 ('cash_flow_statement', 'ttm')]
 
     
-    company = None
+    companies = None  # comma separated list of companies ticks
     limit = 1
     period_type = None
 
@@ -26,16 +26,19 @@ class TagnifiSpider(Spider):
     }
 
     def start_requests(self):
-        if self.company is None:
+        if not self.companies:
             raise NotConfigured
         for statement, period_type in self.STATEMENTS:
             period_type = self.period_type or period_type
-            yield Request(url=self.BASE_URL.format(company=self.company, statement=statement, period_type=period_type,
-                                                   limit=self.limit),
-                          meta={'statement': statement, 'period_type': period_type, 'limit': self.limit})
+            for company in self.companies.split(','):
+                yield Request(url=self.BASE_URL.format(company=company, statement=statement, period_type=period_type,
+                                                       limit=self.limit),
+                              meta={'statement': statement, 'period_type': period_type, 'limit': self.limit,
+                                    'company': company})
     
     def parse(self, response):
         statement = response.meta['statement']
         period_type = response.meta['period_type']
         limit = response.meta['limit']
-        open(f"{self.company}-{statement}-{period_type}-{limit}.json", "w").write(response.text)
+        company = response.meta['company']
+        open(f"{company}-{statement}-{period_type}-{limit}.json", "w").write(response.text)
