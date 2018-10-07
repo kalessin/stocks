@@ -11,7 +11,8 @@ from odf.text import P
 from stocks.formula import evaluate
 
 _FILE_RE = re.compile(r"(\w+)-(\w+)-(\w+)")
-_NUM_ROWS = 152
+_NUM_ROWS = 175
+
 
 _TRANSLATION = {
     'income_statement': {
@@ -113,7 +114,7 @@ def _get_column_ord(col, colord=1):
     >>> _get_column_ord('CA')
     79
     """
-    if len(col) == 0:
+    if not col:
         return colord
     firstord = ord(col[0]) - ord('A')
     if len(col) == 1:
@@ -146,71 +147,158 @@ def _incr_column(column):
     return _get_column_from_ord(_get_column_ord(column) + 1)
 
 
-def _getCell(sheet, rowel, col):
-    colord = _get_column_ord(col)
-    coln = 0
-    for cell in rowel.getElementsByType(TableCell):
-        n = int(cell.getAttribute('numbercolumnsrepeated') or 1)
-        if coln + n > colord:
-            if colord - coln == 1:
-                # we are in the target cell, just remove the repeated attribute
-                # and insert a new cell with repeated decreased by 1
-                cell.removeAttribute('numbercolumnsrepeated')
-                newcell = TableCell(stylename=cell.getAttribute('stylename'), numbercolumnsrepeated=n - 1)
-                rowel.insertBefore(newcell, cell.nextSibling)
-                return cell
+class Cell:
+
+    COORD_RE = re.compile(r'([A-Z]+)(\d+)')
+
+    def __init__(self, coords, odf_cell):
+        self.__coords = coords
+        self.__cell = odf_cell
+
+    @property
+    def coords(self):
+        return self.__coords
+
+    @classmethod
+    def tupleFromCoords(cls, coords):
+        col, row = cls.COORD_RE.match(coords).groups()
+        return col, int(row)
+
+    @property
+    def column(self):
+        return self.tupleFromCoords(self.coords)[0]
+
+    def setValue(self, value, vtype="string", is_formula=False):
+        self.__cell.setAttribute("valuetype", vtype)
+        if is_formula:
+            assert self.__cell.getAttribute('formula'), f"Cell {self.coords} doesn't have formula."
+            self.__cell.setAttribute('value', value)
+        else:
+            if vtype in ("float", "string"):
+                self.__cell.setAttribute("value", value)
             else:
+                raise ValueError(f"Value type {vtype} not supported")
+            if self.__cell.getAttribute("formula"):
+                self.__cell.removeAttribute("formula")
+        if self.__cell.firstChild is not None:
+            self.__cell.removeChild(self.__cell.firstChild)
+        self.__cell.addElement(P(text=str(value)))
+
+    def getValue(self):
+        value = self.__cell.getAttribute('value') or 0
+        if self.__cell.getAttribute("valuetype") == "float":
+            try:
+                value = float(value)
+            except:
+                pass
+        return value
+
+    def getFormula(self):
+        return self.__cell.getAttribute('formula')
+
+    def evalFormula(self, filled_cells):
+        formula = self.getFormula()
+        return evaluate(formula, filled_cells)
+
+
+class Row:
+
+    def __init__(self, idx, odf_row):
+        self.__rowindex = idx
+        self.__odf_row = odf_row
+
+    @property
+    def index(self):
+        return self.__rowindex
+
+    def getCell(self, col):
+        colord = _get_column_ord(col)
+        coln = 0
+        for cell in self.__odf_row.getElementsByType(TableCell):
+            n = int(cell.getAttribute('numbercolumnsrepeated') or 1)
+            if coln + n > colord:
+                if colord - coln == 1:
+                    # we are in the target cell, just remove the repeated attribute
+                    # and insert a new cell with repeated decreased by 1
+                    cell.removeAttribute('numbercolumnsrepeated')
+                    newcell = TableCell(stylename=cell.getAttribute('stylename'), numbercolumnsrepeated=n - 1)
+                    self.__odf_row.insertBefore(newcell, cell.nextSibling)
+                    return Cell(f'{col}{self.index}', cell)
                 # we are in a previous cell, just remove the repeated, and add two new cells,
                 # one being the target cell and another with repeated decreased by two
                 cell.removeAttribute('numbercolumnsrepeated')
                 nextSibling = cell.nextSibling
                 newcell = TableCell(stylename=cell.getAttribute('stylename'))
-                rowel.insertBefore(newcell, nextSibling)
+                self.__odf_row.insertBefore(newcell, nextSibling)
                 if n > 2:
                     newnewcell = TableCell(stylename=cell.getAttribute('stylename'))
                     if n > 3:
                         newnewcell.setAttribute('numbercolumnsrepeated', n - 2)
-                    rowel.insertBefore(newnewcell, nextSibling)
-                return newcell
-        elif coln + n == colord:
-            return cell
-        coln += n
-    raise ValueError
+                    self.__odf_row.insertBefore(newnewcell, nextSibling)
+                return Cell(f'{col}{self.index}', newcell)
+            if coln + n == colord:
+                return Cell(f'{col}{self.index}', cell)
+            coln += n
+        raise ValueError
 
 
-def _getRowByIndex(sheet, idx):
-    assert idx > 0, f"Wrong row index: {idx}"
-    rown = 0
-    for row in sheet.getElementsByType(TableRow):
-        n = int(row.getAttribute('numberrowsrepeated') or 1)
-        if rown + n > idx:
-            if idx - rown == 1:
-                # we are in the target row, just remove the repeated attribute
-                # and insert a new row with repeated decreased by 1
-                row.removeAttribute('numberrowsrepeated')
-                newrow = TableRow(stylename=row.getAttribute('stylename'), numberrowsrepeated=n - 1)
-                sheet.insertBefore(newrow, row.nextSibling)
-                return row
-            else:
+class Sheet:
+
+    def __init__(self, odf_sheet):
+        self.__sheet = odf_sheet
+
+    def getCell(self, coord):
+        col, row = Cell.tupleFromCoords(coord)
+        rowel = self._getRowByIndex(row)
+        return rowel.getCell(col)
+
+    def _getRowByIndex(self, idx):
+        assert idx > 0, f"Wrong row index: {idx}"
+        rown = 0
+        for row in self.__sheet.getElementsByType(TableRow):
+            n = int(row.getAttribute('numberrowsrepeated') or 1)
+            if rown + n > idx:
+                if idx - rown == 1:
+                    # we are in the target row, just remove the repeated attribute
+                    # and insert a new row with repeated decreased by 1
+                    row.removeAttribute('numberrowsrepeated')
+                    newrow = TableRow(stylename=row.getAttribute('stylename'), numberrowsrepeated=n - 1)
+                    self.__sheet.insertBefore(newrow, row.nextSibling)
+                    return Row(idx, row)
                 # we are in a previous row, just remove the repeated, and add two new rows,
                 # one being the target row and another with repeated decreased by two
                 row.removeAttribute('numberrowsrepeated')
                 nextSibling = row.nextSibling
                 newrow = TableRow(stylename=row.getAttribute('stylename'))
-                sheet.insertBefore(newrow, nextSibling)
+                self.__sheet.insertBefore(newrow, nextSibling)
                 if n > 2:
                     newnewrow = TableRow(stylename=row.getAttribute('stylename'))
                     if n > 3:
                         newnewrow.setAttribute('numberrowsrepeated', n - 2)
-                    sheet.insertBefore(newnewrow, nextSibling)
-                return newrow
-        elif rown + n == idx:
-            return row
-        rown += n
-    raise ValueError(f"Error retrieving row {idx}")
+                    self.__sheet.insertBefore(newnewrow, nextSibling)
+                return Row(idx, newrow)
+            if rown + n == idx:
+                return Row(idx, row)
+            rown += n
+        raise ValueError(f"Error retrieving row {idx}")
 
 
-class Process(object):
+class Document:
+    def __init__(self, filename):
+        self.__filename = filename
+        self.__doc = load(filename)
+
+    def getSheet(self, name):
+        for sheet in self.__doc.spreadsheet.childNodes:
+            if sheet.getAttribute('name') == name:
+                return Sheet(sheet)
+        raise ValueError(f"No sheet with name {name}.")
+
+    def save(self):
+        self.__doc.save(self.__filename)
+
+
+class Process:
     def __init__(self):
 
         parser = argparse.ArgumentParser()
@@ -222,61 +310,65 @@ class Process(object):
         self.__filled_cells = {}
 
     def run(self):
-        doc = load(self.args.spreadsheet)
         company, statement, period_type = _FILE_RE.match(self.args.ifile).groups()
-        for sheet in doc.spreadsheet.childNodes:
-            if sheet.getAttribute('name') == company:
-                translations = _TRANSLATION[statement]
-                new_data = json.load(open(self.args.ifile))
-                column = self.args.column
-                for fundamental in new_data['fundamentals'][::-1]:
-                    if period_type == 'annual' and not fundamental['filing_type'].startswith('10-K'):
-                        continue
-                    for tag in fundamental['tags']:
-                        if tag['tag'] in translations:
-                            value = tag['value'] / _DIVISORS[tag['tag']]
-                            if value:
-                                row = translations[tag['tag']]
-                                rowel = _getRowByIndex(sheet, row)
-                                cell = _getCell(sheet, rowel, column)
-                                cell.setAttribute("value", value)
-                                self.__filled_cells[f'{column}{row}'] = value
-                                cell.setAttribute("valuetype", 'float')
-                                if cell.getAttribute("formula"):
-                                    cell.removeAttribute("formula")
-                                if cell.firstChild is not None:
-                                    cell.removeChild(cell.firstChild)
-                                cell.addElement(P(text=value))
-                                print(f"Updated cell {column}{row} with value {value}")
+        doc = Document(self.args.spreadsheet)
+        sheet = doc.getSheet(company)
+        translations = _TRANSLATION[statement]
+        new_data = json.load(open(self.args.ifile))
+        column = self.args.column
+        for fundamental in new_data['fundamentals'][::-1]:
+            if period_type == 'annual' and not fundamental['filing_type'].startswith('10-K'):
+                continue
 
-                    for row in range(1, _NUM_ROWS + 1):
-                        rowel = _getRowByIndex(sheet, row)
+            # update header
+            cell = sheet.getCell(f'{column}1')
+            if period_type == 'annual':
+                cell.setValue(str(fundamental['fiscal_year']))
+            elif period_type in ('quarter', 'ttm'):
+                quarter = fundamental['fiscal_quarter']
+                if quarter == 4:
+                    cell.setValue(str(fundamental['fiscal_year']))
+                else:
+                    cell.setValue(f"TTM {fundamental['fiscal_year']}.{'I'*quarter}")
+
+            # update column
+            for tag in fundamental['tags']:
+                print(tag)
+                if tag['tag'] in translations:
+                    value = tag['value'] / _DIVISORS[tag['tag']]
+                    if value:
+                        row = translations[tag['tag']]
+                        cell = sheet.getCell(f'{column}{row}')
+                        cell.setValue(value, 'float')
+                        print(f"Updated cell {column}{row} with value {value}")
+
+            # update formulas
+            for row in range(1, _NUM_ROWS + 1):
+                coord = f'{column}{row}'
+                self.__filled_cells[coord] = sheet.getCell(coord).getValue()
+            for row in range(1, _NUM_ROWS + 1):
+                try:
+                    cell = sheet.getCell(f'{column}{row}')
+                except ValueError:
+                    print(f"Cell {column}{row} is not initialized.")
+                else:
+                    formula = cell.getFormula()
+                    if formula is not None:
                         try:
-                            cell = _getCell(sheet, rowel, column)
-                        except ValueError:
-                            print(f"Cell {column}{row} is not initialized.")
-                        else:
-                            formula = cell.getAttribute('formula')
-                            if formula is not None:
-                                try:
-                                    value = evaluate(formula, self.__filled_cells)
-                                except Exception as e:
-                                    print(f'Error evaluating cell {column}{row}: {formula}')
-                                    print(f'{e!r}')
-                                    return
-                                print(f'Evaluated cell {column}{row} with result {value} ({formula})')
-                                self.__filled_cells[f'{column}{row}'] = value
-                                cell.setAttribute('value', value)
-                                if cell.firstChild is not None:
-                                    cell.removeChild(cell.firstChild)
+                            value = cell.evalFormula(self.__filled_cells)
+                            value = evaluate(formula, self.__filled_cells)
+                        except Exception as e:
+                            print(f'Error evaluating cell {column}{row}: {formula}')
+                            print(f'{e!r}')
+                            return
+                        print(f'Evaluated cell {column}{row} with result {value} ({formula})')
+                        self.__filled_cells[f'{column}{row}'] = value
+                        cell.setValue(value, is_formula=True)
 
-                    column = _incr_column(column)
+            column = _incr_column(column)
 
-                doc.save(self.args.spreadsheet)
-                print("Saved", self.args.spreadsheet)
-                break
-        else:
-            print(f"No sheet with name {company}")
+        doc.save()
+        print("Saved", self.args.spreadsheet)
 
 
 if __name__ == '__main__':
