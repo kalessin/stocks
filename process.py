@@ -16,19 +16,19 @@ _NUM_ROWS = 175
 
 _TRANSLATION = {
     'income_statement': {
-        'Revenue': 3,
-        'CostOfRevenue': 7,
-        'SellingGeneralAdministrative': 10,
-        'ResearchDevelopment': 11,
-        'InterestExpense': 20,
-        'OtherExpenseIncome': 22,
-        'IncomeBeforeIncomeTaxes': 23,
-        'ConsolidatedNetIncomeLoss': 26,
-        'NoncontrollingInterestIncome': 28,
-        'PreferredStockDividendsDeclared': 37,
-        'NetIncomeLossAttributableCommonShareholders': 38,
+        'revenue': 3,
+        'costofrevenue': 7,
+        'sellinggeneraladministrative': 10,
+        'researchdevelopment': 11,
+        'interestexpense': 20,
+        'otherexpenseincome': 22,
+        'incomebeforeincometaxes': 23,
+        'consolidatednetincomeLoss': 26,
+        'noncontrollinginterestincome': 28,
+        'preferredstockdividendsdeclared': 37,
+        'netincomelossattributablecommonshareholders': 38,
         'dilutedsharesoutstanding': 40,
-        'CommonStockDividendsDeclared': 41,
+        'commonstockdividendsdeclared': 41,
     },
     'balance_sheet_statement': {
         'cashequivalents': 46,
@@ -88,8 +88,8 @@ _TRANSLATION = {
 
 _DIVISORS = defaultdict(lambda: 1000000.0)
 _DIVISORS.update({
-    'CommonStockDividendsDeclared': 1.0,
-    'PreferredStockDividendsDeclared': 1.0,
+    'commonstockdividendsdeclared': 1.0,
+    'preferredstockdividendsdeclared': 1.0,
 })
 
 
@@ -317,9 +317,12 @@ class Process:
         new_data = json.load(open(self.args.ifile))
         column = self.args.column
         for fundamental in new_data['fundamentals'][::-1]:
-            if period_type == 'annual' and not fundamental['filing_type'].startswith('10-K'):
+            if period_type == 'annual' and not fundamental['annual_period']:
+                continue
+            if period_type != 'annual' and fundamental['annual_period']:
                 continue
 
+            print(f"End period: {fundamental['end_period']}")
             # update header
             cell = sheet.getCell(f'{column}1')
             if period_type == 'annual':
@@ -333,14 +336,13 @@ class Process:
 
             # update column
             for tag in fundamental['tags']:
-                print(tag)
                 if tag['tag'] in translations:
                     value = tag['value'] / _DIVISORS[tag['tag']]
                     if value:
                         row = translations[tag['tag']]
                         cell = sheet.getCell(f'{column}{row}')
                         cell.setValue(value, 'float')
-                        print(f"Updated cell {column}{row} with value {value}")
+                        print(f"Updated cell {column}{row} with value {value} ({tag['tag']})")
 
             # update formulas
             for row in range(1, _NUM_ROWS + 1):
