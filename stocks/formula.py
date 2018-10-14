@@ -24,11 +24,11 @@ def evaluate(formula_string, celldict):
         assert colstart == colend, 'for now not supported multicolumn formula'
         vals = []
         for row in range(int(rowstart), int(rowend) + 1):
-            vals.append(celldict.get(f'{colstart}{row}', 0))
+            vals.append(celldict[f'{colstart}{row}'])
         formula_string = formula_string[:m.start()] + repr(vals) + formula_string[m.end():]
     for m in list(_CELL_RE.finditer(formula_string))[::-1]:
         col, row = m.groups()
-        val = celldict.get(f'{col}{row}', 0)
+        val = celldict[f'{col}{row}']
         formula_string = formula_string[:m.start()] + repr(val) + formula_string[m.end():]
     for op, repl in _REPLACEMENTS:
         formula_string = formula_string.replace(op, repl)

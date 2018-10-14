@@ -57,31 +57,32 @@ _TRANSLATION = {
         'commonstockclassasharesoutstanding': 96,
     },
     'cash_flow_statement': {
-        'DepreciationDepletionAmortization': 102,
-        'ChangeDeferredTaxes': 103,
-        'ShareBasedCompensation': 104,
-        'ChangeDeferredRevenue': 105,
-        'ChangeTaxesPayable': 107,
-        'ChangeInventories': 108,
-        'ChangeTradeReceivables': 109,
-        'ChangeAccountsPayable': 110,
-        'RestructuringImpairmentChargesCashFlow': 112,
-        'OtherOperatingActivities': 113,
-        'AcquisitionsNet': 117,
-        'PurchasePropertyPlantEquipment': 118,
-        'SalePropertyPlantEquipment': 119,
-        'PurchaseInvestments': 121,
-        'SaleMaturityInvestments': 122,
-        'CashDividends': 127,
-        'DividendsNoncontrollingInterests': 128,
-        'EquityIssuances': 129,
-        'EquityRepurchases': 130,
-        'LongTermDebtRepayments': 132,
-        'LongTermDebtIssuances': 133,
-        'OtherFinancingActivities': 135,
-        'EffectCurrencyExchangeRate': 138,
-        'CashPaidIncomeTaxes': 140,
-        'CashPaidInterest': 141,
+        'depreciationdepletionamortization': 102,
+        'deferredincometaxestaxcredits': 103,
+        'sharebasedcompensation': 104,
+        'changedeferredrevenue': 105,
+        'changetaxespayable': 107,
+        'changeinventories': 108,
+        'changetradereceivables': 109,
+        'changeaccountspayable': 110,
+        'changeotheroperatingassetsliabilitiesnet': 111,
+        'restructuringimpairmentchargescashflow': 113,
+        'otheroperatingactivities': 114,
+        'acquisitionsnet': 118,
+        'purchasepropertyplantequipment': 119,
+        'salepropertyplantequipment': 120,
+        'purchaseinvestments': 122,
+        'salematurityinvestments': 123,
+        'cashdividends': 128,
+        'dividendsnoncontrollinginterests': 129,
+        'equityissuances': 130,
+        'equityrepurchases': 131,
+        'longtermdebtrepayments': 133,
+        'longtermdebtissuances': 134,
+        'otherfinancingactivities': 136,
+        'effectcurrencyexchangerate': 139,
+        'cashpaidincometaxes': 141,
+        'cashpaidinterest': 142,
     },
 }
 
@@ -242,6 +243,15 @@ class Row:
         raise ValueError
 
 
+class keydefaultdict(defaultdict):
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError( key )
+        else:
+            ret = self[key] = self.default_factory(key)
+            return ret
+
+
 class Sheet:
 
     def __init__(self, odf_sheet):
@@ -307,12 +317,13 @@ class Process:
         parser.add_argument('column', help='Column where to start to add new data.')
 
         self.args = parser.parse_args()
-        self.__filled_cells = {}
+        self.__filled_cells = None
 
     def run(self):
         company, statement, period_type = _FILE_RE.match(self.args.ifile).groups()
         doc = Document(self.args.spreadsheet)
         sheet = doc.getSheet(company)
+        self.__filled_cells = keydefaultdict(lambda key: sheet.getCell(key).getValue())
         translations = _TRANSLATION[statement]
         new_data = json.load(open(self.args.ifile))
         column = self.args.column
