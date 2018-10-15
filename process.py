@@ -11,7 +11,7 @@ from odf.text import P
 from stocks.formula import evaluate
 
 _FILE_RE = re.compile(r"(\w+)-(\w+)-(\w+)")
-_NUM_ROWS = 175
+_MAX_NUM_ROWS = 200
 
 
 _TRANSLATION = {
@@ -20,74 +20,89 @@ _TRANSLATION = {
         'costofrevenue': 7,
         'sellinggeneraladministrative': 10,
         'researchdevelopment': 11,
-        'otheroperatingexpenses': 15,
-        'interestexpense': 20,
-        'otherexpenseincome': 22,
-        'incomebeforeincometaxes': 23,
-        'incometaxes': 25,
-        # 'consolidatednetincomeloss': 26, to be computed
-        'noncontrollinginterestincome': 28,
-        'extraordinaryitems': 34,
-        'preferredstockdividendsdeclared': 37,
-        'netincomelossattributablecommonshareholders': 38,
-        'dilutedsharesoutstanding': 40,
-        'commonstockdividendsdeclared': 41,
+        'depreciationdepletionamortizationexpense': 12,
+        'restructuringimpairmentchargesincomeopex': 13,
+        'otheroperatingexpenses': 16,
+        'interestexpense': 21,
+        'otherexpenseincome': 23,
+        'incomebeforeincometaxes': 24,
+        'incometaxes': 26,
+        # 'consolidatednetincomeloss': 27, to be computed
+        'noncontrollinginterestincome': 29,
+        'discontinuedoperations': 34,
+        'extraordinaryitems': 35,
+        'preferredstockdividendsdeclared': 38,
+        'netincomelossattributablecommonshareholders': 39,
+        'dilutedsharesoutstanding': 41,
+        'commonstockdividendsdeclared': 42,
     },
     'balance_sheet_statement': {
-        'cashequivalents': 46,
-        'shortterminvestments': 47,
-        'tradereceivables': 50,
-        'inventories': 53,
-        'prepaidexpensesothercurrentassets': 54,
-        'propertyplantequipment': 58,
-        'propertyplantequipmentnet': 60,
-        'goodwill': 61,
-        'intangibleassetsnet': 62,
-        'longterminvestments': 63,
-        'otherassets': 64,
-        'accountspayable': 67,
-        'accruedothercurrentliabilities': 68,
-        'debtcurrent': 70,
-        'longtermdebtcapitalleaseobligations': 76,
-        'deferredtaxesnoncurrent': 79,
-        'taxespayablenoncurrent': 80,
-        'noncontrollinginterest': 81,
-        'othernoncurrentliabilities': 82,
-        'preferredstock': 86,
-        'commonstock': 87,
-        'additionalpaidincapital': 88,
-        'retainedearningsdeficit': 89,
-        'accumulatedothercomprehensiveincome': 91,
-        'commonstockclassasharesoutstanding': 97,
+        'cashequivalents': 47,
+        'shortterminvestments': 48,
+        'tradereceivables': 51,
+        'inventories': 54,
+        'prepaidexpensesothercurrentassets': 55,
+        'divestmentassetscurrent': 56,
+        'propertyplantequipment': 60,
+        'propertyplantequipmentnet': 62,
+        'goodwill': 63,
+        'intangibleassetsnet': 64,
+        'longterminvestments': 65,
+        'deferredtaxassetsnoncurrent': 66,
+        'otherassets': 67,
+        'accountspayable': 70,
+        'accruedothercurrentliabilities': 73,
+        'debtcurrent': 75,
+        'taxespayablecurrent': 76,
+        'dividendspayable': 77,
+        'employeerelatedliabilitiescurrent': 78,
+        'longtermdebtcapitalleaseobligations': 83,
+        'deferredtaxesnoncurrent': 86,
+        'taxespayablenoncurrent': 87,
+        'noncontrollinginterest': 88,
+        'pensionotherpostretirementliabilities': 89,
+        'othernoncurrentliabilities': 90,
+        'preferredstock': 94,
+        'commonstock': 95,
+        'additionalpaidincapital': 96,
+        'retainedearningsdeficit': 97,
+        'treasurystock': 98,
+        'accumulatedothercomprehensiveincome': 99,
+        'commonstockclassasharesoutstanding': 105,
     },
     'cash_flow_statement': {
-        'depreciationdepletionamortization': 103,
-        'deferredincometaxestaxcredits': 104,
-        'sharebasedcompensation': 105,
-        'changedeferredrevenue': 106,
-        'changetaxespayable': 108,
-        'changeinventories': 109,
-        'changetradereceivables': 110,
-        'changeaccountspayable': 111,
-        'changeotheroperatingassetsliabilitiesnet': 112,
-        'restructuringimpairmentchargescashflow': 114,
-        'otheroperatingactivities': 115,
-        'acquisitionsnet': 119,
-        'purchasepropertyplantequipment': 120,
-        'salepropertyplantequipment': 121,
-        'purchaseinvestments': 123,
-        'salematurityinvestments': 124,
-        'otherinvestingactivities': 125,
-        'cashdividends': 130,
-        'dividendsnoncontrollinginterests': 131,
-        'equityissuances': 132,
-        'equityrepurchases': 133,
-        'longtermdebtrepayments': 135,
-        'longtermdebtissuances': 136,
-        'otherfinancingactivities': 138,
-        'effectcurrencyexchangerate': 141,
-        'cashpaidincometaxes': 143,
-        'cashpaidinterest': 144,
+        'depreciationdepletionamortization': 111,
+        'deferredincometaxestaxcredits': 112,
+        'sharebasedcompensation': 113,
+        'changedeferredrevenue': 114,
+        'gainlossonsale': 115,
+        'pensionotherpostretirementbenefits': 116,
+        'changetaxespayable': 118,
+        'changeinventories': 119,
+        'changetradereceivables': 120,
+        'changeaccountspayable': 121,
+        'changeotheroperatingassetsliabilitiesnet': 122,
+        'restructuringimpairmentchargescashflow': 124,
+        'otheroperatingactivities': 125,
+        'acquisitionsnet': 129,
+        'purchasepropertyplantequipment': 130,
+        'salepropertyplantequipment': 131,
+        'purchaseinvestments': 133,
+        'intangiblesnet': 134,
+        'salematurityinvestments': 135,
+        'otherinvestingactivities': 136,
+        'proceedsincentiveplans': 141,
+        'cashdividends': 142,
+        'dividendsnoncontrollinginterests': 143,
+        'equityissuances': 144,
+        'equityrepurchases': 145,
+        'longtermdebtrepayments': 147,
+        'longtermdebtissuances': 148,
+        'shorttermdebtissuancesrepayments': 150,
+        'otherfinancingactivities': 151,
+        'effectcurrencyexchangerate': 154,
+        'cashpaidincometaxes': 156,
+        'cashpaidinterest': 157,
     },
 }
 
@@ -309,8 +324,8 @@ class Document:
                 return Sheet(sheet)
         raise ValueError(f"No sheet with name {name}.")
 
-    def save(self):
-        self.__doc.save(self.__filename)
+    def save(self, filename=None):
+        self.__doc.save(filename or self.__filename)
 
 
 class Process:
@@ -327,6 +342,7 @@ class Process:
     def run(self):
         company, statement, period_type = _FILE_RE.match(self.args.ifile).groups()
         doc = Document(self.args.spreadsheet)
+        doc.save(self.args.spreadsheet + '.back')
         sheet = doc.getSheet(company)
         self.__filled_cells = keydefaultdict(lambda key: sheet.getCell(key).getValue())
         translations = _TRANSLATION[statement]
@@ -362,14 +378,17 @@ class Process:
                         print(f"Updated cell {column}{row} with value {value} ({tag['tag']})")
 
             # update formulas
-            for row in range(1, _NUM_ROWS + 1):
+            for row in range(1, _MAX_NUM_ROWS + 1):
                 coord = f'{column}{row}'
-                self.__filled_cells[coord] = sheet.getCell(coord).getValue()
-            for row in range(1, _NUM_ROWS + 1):
+                try:
+                    self.__filled_cells[coord] = sheet.getCell(coord).getValue()
+                except ValueError:
+                    pass
+            for row in range(1, _MAX_NUM_ROWS + 1):
                 try:
                     cell = sheet.getCell(f'{column}{row}')
                 except ValueError:
-                    print(f"Cell {column}{row} is not initialized.")
+                    pass
                 else:
                     formula = cell.getFormula()
                     if formula is not None:
