@@ -239,6 +239,15 @@ class Row:
     def index(self):
         return self.__rowindex
 
+    @staticmethod
+    def _copycell(odfcell, **kwargs):
+        kw = {}
+        for _, attr in odfcell.attributes.keys():
+            attr = attr.replace('-', '')
+            kw[attr] = odfcell.getAttribute(attr)
+        kw.update(kwargs)
+        return TableCell(**kw)
+
     def getCell(self, col):
         colord = _get_column_ord(col)
         coln = 0
@@ -249,17 +258,17 @@ class Row:
                     # we are in the target cell, just remove the repeated attribute
                     # and insert a new cell with repeated decreased by 1
                     cell.removeAttribute('numbercolumnsrepeated')
-                    newcell = TableCell(stylename=cell.getAttribute('stylename'), numbercolumnsrepeated=n - 1)
+                    newcell = self._copycell(cell, numbercolumnsrepeated=n-1)
                     self.__odf_row.insertBefore(newcell, cell.nextSibling)
                     return Cell(f'{col}{self.index}', cell)
                 # we are in a previous cell, just remove the repeated, and add two new cells,
                 # one being the target cell and another with repeated decreased by two
                 cell.removeAttribute('numbercolumnsrepeated')
                 nextSibling = cell.nextSibling
-                newcell = TableCell(stylename=cell.getAttribute('stylename'))
+                newcell = self._copycell(cell)
                 self.__odf_row.insertBefore(newcell, nextSibling)
                 if n > 2:
-                    newnewcell = TableCell(stylename=cell.getAttribute('stylename'))
+                    newnewcell = self._copycell(cell)
                     if n > 3:
                         newnewcell.setAttribute('numbercolumnsrepeated', n - 2)
                     self.__odf_row.insertBefore(newnewcell, nextSibling)
