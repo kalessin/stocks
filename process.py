@@ -377,7 +377,7 @@ class Process:
         for fundamental in new_data['fundamentals'][::-1]:
             if period_type == 'annual' and not fundamental['annual_period']:
                 continue
-            if period_type != 'annual' and fundamental['annual_period']:
+            if period_type != 'annual' and fundamental['annual_period'] and statement != 'balance_sheet_statement':
                 continue
 
             print(f"End period: {fundamental['end_period']}")
